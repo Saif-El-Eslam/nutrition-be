@@ -47,6 +47,27 @@ router.post(
   controller.login,
 );
 
+// Google Identity Services returns an ID token to the frontend. The backend
+// verifies it, then creates the same cookie session used by password login.
+router.post(
+  "/google",
+  strictLoginLimiter,
+  validators.googleCredential,
+  handleValidationErrors,
+  controller.googleSignIn,
+);
+
+// Explicit linking is used when Google is not authoritative for the email
+// address (for example, a Google Account backed by a non-Google mailbox).
+router.post(
+  "/google/link",
+  authenticate,
+  moderateLimiter,
+  validators.googleCredential,
+  handleValidationErrors,
+  controller.linkGoogleAccount,
+);
+
 // TIER 2: Moderate - Refresh token (5 per 15 mins)
 router.post(
   "/refresh-token",
@@ -72,6 +93,17 @@ router.post(
   validators.resetPassword,
   handleValidationErrors,
   controller.resetPassword,
+);
+
+// Authenticated password change. Password accounts re-enter their current
+// password; Google-only accounts verify the email OTP before adding one.
+router.patch(
+  "/password",
+  authenticate,
+  strictLoginLimiter,
+  validators.changePassword,
+  handleValidationErrors,
+  controller.changePassword,
 );
 
 // TIER 2: Moderate - Logout (5 per 15 mins)

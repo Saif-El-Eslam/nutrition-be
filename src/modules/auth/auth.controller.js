@@ -49,6 +49,40 @@ const login = async (req, res, next) => {
   }
 };
 
+const googleSignIn = async (req, res, next) => {
+  try {
+    const result = await authService.googleSignIn(req.body);
+    setCookies(res, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+
+    res.status(result.isNewUser ? 201 : 200).json({
+      success: true,
+      data: result.user,
+      meta: {
+        isNewUser: result.isNewUser,
+        needsProfileCompletion: !result.user.phone,
+        passwordLoginAvailable: result.passwordLoginAvailable,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const linkGoogleAccount = async (req, res, next) => {
+  try {
+    const user = await authService.linkGoogleAccount(
+      req.user.user_id,
+      req.body,
+    );
+    res.json({ success: true, data: user });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const refreshToken = async (req, res, next) => {
   try {
     // HTTP-only cookie is the only accepted source for the refresh token.
@@ -101,8 +135,26 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   try {
     const result = await authService.resetPassword(req.body);
+    clearCookies(res);
     res.json({
       message: translate("PASSWORD_RESET_SUCCESS", getLanguage(req)),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  try {
+    const result = await authService.changePassword(req.user.user_id, req.body);
+    setCookies(res, {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    });
+    res.json({
+      success: true,
+      message: translate("PASSWORD_CHANGED_SUCCESS", getLanguage(req)),
+      data: result.user,
     });
   } catch (error) {
     next(error);
@@ -112,10 +164,13 @@ const resetPassword = async (req, res, next) => {
 export default {
   signup,
   login,
+  googleSignIn,
+  linkGoogleAccount,
   refreshToken,
   logout,
   sendOtp,
   verifyOtp,
   forgotPassword,
   resetPassword,
+  changePassword,
 };

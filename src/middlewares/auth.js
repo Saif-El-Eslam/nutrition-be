@@ -21,10 +21,23 @@ const authenticate = async (req, res, next) => {
 
   try {
     const decoded = jwt.verifyAccessToken(token);
-    req.user = decoded;
+    const user = await User.findById(decoded.user_id).select(
+      "+sessionVersion role",
+    );
+    const tokenSessionVersion = decoded.session_version ?? 0;
+    const currentSessionVersion = user?.sessionVersion ?? 0;
+
+    if (!user || tokenSessionVersion !== currentSessionVersion) {
+      throw new Error("Session has been invalidated");
+    }
+
+    req.user = {
+      ...decoded,
+      role: user.role,
+    };
 
     // Update lastSeen asynchronously — do not block the request
-    User.findByIdAndUpdate(decoded.user_id, { lastSeen: new Date() }).exec();
+    User.updateOne({ _id: user._id }, { lastSeen: new Date() }).exec();
 
     next();
   } catch {

@@ -135,8 +135,10 @@ const createSpecialistProfile = [
   body("password")
     .notEmpty()
     .withMessage(["PASSWORD_REQUIRED"])
-    .isLength({ min: 6 })
-    .withMessage(["INVALID_LENGTH", { field: "password", min: 6, max: 50 }]),
+    .isLength({ min: 8, max: 72 })
+    .withMessage(["INVALID_LENGTH", { field: "password", min: 8, max: 72 }])
+    .custom((value) => Buffer.byteLength(value, "utf8") <= 72)
+    .withMessage(["PASSWORD_TOO_LONG"]),
   body("specialization")
     .trim()
     .notEmpty()

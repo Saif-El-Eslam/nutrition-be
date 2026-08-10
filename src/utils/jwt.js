@@ -5,6 +5,7 @@ const signRefreshToken = (user) => {
     {
       user_id: user.id,
       role: user.role,
+      session_version: user.sessionVersion ?? 0,
     },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: "30d" },
@@ -13,7 +14,11 @@ const signRefreshToken = (user) => {
 
 const signAccessToken = (user) => {
   return jwt.sign(
-    { user_id: user.id, role: user.role },
+    {
+      user_id: user.id,
+      role: user.role,
+      session_version: user.sessionVersion ?? 0,
+    },
     process.env.JWT_ACCESS_SECRET,
     {
       expiresIn: "1d",

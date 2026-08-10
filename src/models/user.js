@@ -23,13 +23,27 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       unique: true,
-      required: true,
+      sparse: true,
       index: true,
     },
     passwordHash: {
       type: String,
-      required: true,
+      required: function () {
+        // Enforce an authentication method when a user is first created.
+        // Existing documents may have sensitive fields excluded by a query.
+        return this.isNew && !this.googleSubject;
+      },
       select: false, // Security: Hide by default - explicitly select if needed
+    },
+    // Google's immutable account identifier. Email must never be used as the
+    // provider identity because a Google Account email can change.
+    googleSubject: {
+      type: String,
+      unique: true,
+      sparse: true,
+      select: false,
+      trim: true,
+      maxlength: 255,
     },
     role: {
       type: String,
@@ -39,6 +53,14 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       select: false, // Security: Hide by default - explicitly select if needed
+    },
+    // Incremented after password changes and logout. Tokens carry the version
+    // they were issued for, allowing old access tokens to be rejected.
+    sessionVersion: {
+      type: Number,
+      default: 0,
+      min: 0,
+      select: false,
     },
 
     lastSeen: {
@@ -170,7 +192,7 @@ const userSchema = new mongoose.Schema(
 // Hash password before save
 userSchema.pre("save", async function () {
   // Only hash if password changed
-  if (this.isModified("passwordHash")) {
+  if (this.isModified("passwordHash") && this.passwordHash) {
     this.passwordHash = bcrypt.hashSync(this.passwordHash, 12);
   }
   // no next() here!
@@ -178,6 +200,7 @@ userSchema.pre("save", async function () {
 
 // Instance method
 userSchema.methods.comparePassword = function (password) {
+  if (!this.passwordHash) return false;
   return bcrypt.compare(password, this.passwordHash);
 };
 
@@ -186,7 +209,9 @@ userSchema.methods.toJSON = function () {
 
   // Remove sensitive fields
   delete user.passwordHash;
+  delete user.googleSubject;
   delete user.refreshToken; // if you store it
+  delete user.sessionVersion;
   delete user.__v;
 
   // Rename fields

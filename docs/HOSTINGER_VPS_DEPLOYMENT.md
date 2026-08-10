@@ -26,7 +26,7 @@ PM2 manages both Node.js processes; Nginx is the only public HTTP/HTTPS endpoint
 | `Diet-Wellness`                   | Actual frontend repository name                          |
 | Backend / frontend ports          | `5000` / `3000`                                          |
 | Backend / frontend directories    | `/var/www/backend` / `/var/www/frontend` |
-| Node version                      | `20.19.5` (from `.nvmrc`)                                |
+| Node version                      | `24.18.0` (from `.nvmrc`)                                |
 
 ## 3. Initial root login
 
@@ -95,8 +95,8 @@ su - deploy
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 export NVM_DIR="$HOME/.nvm"
 . "$NVM_DIR/nvm.sh"
-nvm install 20.19.5
-nvm alias default 20.19.5
+nvm install 24.18.0
+nvm alias default 24.18.0
 node --version
 ```
 
@@ -169,7 +169,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit it as `deploy`. Required production names are `NODE_ENV`, `ENVIRONMENT`, `HOST`, `PORT`, `MONGO_URI`, `DB_NAME`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`, `BACKEND_URL`, `BUSINESS_EMAIL`, `GOOGLE_APP_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and all six `PAYMOB_*` values in `.env.example`. Set `FRONTEND_URL=https://example.com`, `BACKEND_URL=https://api.example.com`, `HOST=127.0.0.1`, and `PORT=5000`. Production values stay on the VPS and `.env` is ignored.
+Edit it as `deploy`. Required production names are `NODE_ENV`, `ENVIRONMENT`, `HOST`, `PORT`, `MONGO_URI`, `DB_NAME`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GOOGLE_CLIENT_IDS`, `FRONTEND_URL`, `BACKEND_URL`, `BUSINESS_EMAIL`, `GOOGLE_APP_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and all six `PAYMOB_*` values in `.env.example`. Set `FRONTEND_URL=https://example.com`, `BACKEND_URL=https://api.example.com`, `HOST=127.0.0.1`, and `PORT=5000`. Production values stay on the VPS and `.env` is ignored.
 
 The frontend separately uses `/var/www/frontend/.env.production` containing `NEXT_PUBLIC_API_URL=https://api.example.com/api`. It is public and embedded at build time, so changes require rebuilding.
 
@@ -187,7 +187,7 @@ curl --fail http://127.0.0.1:5000/api/health
 pm2 logs backend --lines 100 --nostream
 ```
 
-There are no automated tests and no migration framework. Do not run development seeds in production. Prove this manual deployment before enabling Actions.
+Run `npm test` before deployment. Do not run development seeds in production. Prove this manual deployment before enabling Actions.
 
 ## 15. Nginx configuration
 
@@ -275,7 +275,7 @@ push/merge to main
   -> fetch/reset to origin/main
   -> npm ci --omit=dev
   -> source validation (no compile step)
-  -> no migration (none exists)
+  -> no automatic data migrations
   -> PM2 startOrReload
   -> GET /api/health
 ```
@@ -314,7 +314,7 @@ ssh -T github-backend
 ss -ltnp | grep ':5000'
 ```
 
-For Actions SSH errors, check secret newlines, username, port, authorized key, and pinned host key. For startup failures, compare `.env` names with `.env.example`; never print values. CORS requires the exact `FRONTEND_URL` origin (no path/trailing slash). Check MongoDB connectivity and Cloudinary/Paymob/email credentials. There are no migrations; never substitute seeds. `EADDRINUSE` identifies a port collision. Permission errors usually mean files are not owned by `deploy`. Frontend public URL changes require a frontend rebuild.
+For Actions SSH errors, check secret newlines, username, port, authorized key, and pinned host key. For startup failures, compare `.env` names with `.env.example`; never print values. CORS requires the exact `FRONTEND_URL` origin (no path/trailing slash). Check MongoDB connectivity and Cloudinary/Paymob/email credentials. Never substitute seeds for schema management. `EADDRINUSE` identifies a port collision. Permission errors usually mean files are not owned by `deploy`. Frontend public URL changes require a frontend rebuild.
 
 ## 25. Security checklist
 

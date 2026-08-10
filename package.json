@@ -17,7 +17,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node src/seeds/seed.dev.js && nodemon src/server.js",
+    "dev": "nodemon src/server.js",
     "build": "node --check src/server.js && node --check src/app.js",
     "test": "node --test",
     "prod": "pm2 start ecosystem.config.cjs",
@@ -39,6 +39,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.1",
+    "google-auth-library": "^10.9.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",

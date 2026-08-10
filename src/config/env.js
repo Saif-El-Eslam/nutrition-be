@@ -10,6 +10,13 @@ const env = {
   dbName: process.env.DB_NAME,
   jwtSecret: process.env.JWT_SECRET,
 
+  // Comma-separated so web, Android, and iOS clients can share this backend.
+  // Every accepted client ID must belong to this application.
+  googleClientIds: (process.env.GOOGLE_CLIENT_IDS || "")
+    .split(",")
+    .map((clientId) => clientId.trim())
+    .filter(Boolean),
+
   googleAppPassword: process.env.GOOGLE_APP_PASSWORD,
   mailFrom: process.env.BUSINESS_EMAIL,
   contactUsEmail: process.env.BUSINESS_EMAIL,

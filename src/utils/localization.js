@@ -65,6 +65,14 @@ export const ERROR_CODES = {
   PHONE_ALREADY_EXISTS: "PHONE_ALREADY_EXISTS",
   INVALID_REFRESH_TOKEN: "INVALID_REFRESH_TOKEN",
   EMAIL_NOT_FOUND: "EMAIL_NOT_FOUND",
+  INVALID_CURRENT_PASSWORD: "INVALID_CURRENT_PASSWORD",
+  NEW_PASSWORD_MUST_DIFFER: "NEW_PASSWORD_MUST_DIFFER",
+  PASSWORD_SETUP_CODE_REQUIRED: "PASSWORD_SETUP_CODE_REQUIRED",
+  INVALID_GOOGLE_TOKEN: "INVALID_GOOGLE_TOKEN",
+  GOOGLE_AUTH_NOT_CONFIGURED: "GOOGLE_AUTH_NOT_CONFIGURED",
+  GOOGLE_ACCOUNT_LINK_REQUIRED: "GOOGLE_ACCOUNT_LINK_REQUIRED",
+  GOOGLE_ACCOUNT_CONFLICT: "GOOGLE_ACCOUNT_CONFLICT",
+  GOOGLE_EMAIL_MISMATCH: "GOOGLE_EMAIL_MISMATCH",
 
   // Specialist-specific errors
   SPECIALIST_NOT_FOUND: "SPECIALIST_NOT_FOUND",
@@ -90,6 +98,7 @@ export const ERROR_CODES = {
   EMAIL_OR_PHONE_REQUIRED: "EMAIL_OR_PHONE_REQUIRED",
   EITHER_EMAIL_OR_PHONE_REQUIRED: "EITHER_EMAIL_OR_PHONE_REQUIRED",
   PASSWORD_REQUIRED: "PASSWORD_REQUIRED",
+  PASSWORD_TOO_LONG: "PASSWORD_TOO_LONG",
   OTP_CODE_REQUIRED: "OTP_CODE_REQUIRED",
   OTP_CODE_INVALID_LENGTH: "OTP_CODE_INVALID_LENGTH",
   INVALID_MONGO_ID_FORMAT: "INVALID_MONGO_ID_FORMAT",
@@ -135,6 +144,7 @@ export const ERROR_CODES = {
   CUSTOMERS_ASSIGNED_SUCCESS: "CUSTOMERS_ASSIGNED_SUCCESS",
   INVALID_CUSTOMER_IDS: "INVALID_CUSTOMER_IDS",
   PASSWORD_RESET_SUCCESS: "PASSWORD_RESET_SUCCESS",
+  PASSWORD_CHANGED_SUCCESS: "PASSWORD_CHANGED_SUCCESS",
   OTP_SENT_SUCCESS: "OTP_SENT_SUCCESS",
   LOGOUT_SUCCESS: "LOGOUT_SUCCESS",
   OTP_VERIFIED_SUCCESS: "OTP_VERIFIED_SUCCESS",
@@ -229,7 +239,7 @@ const translations = {
     [ERROR_CODES.INVALID_MONGO_ID]: "Invalid ID format",
     [ERROR_CODES.INVALID_EMAIL]: "Invalid email address",
     [ERROR_CODES.PASSWORD_TOO_WEAK]:
-      "Password must be at least 8 characters with uppercase, lowercase, and numbers",
+      "Password must be between 8 and 72 characters",
     [ERROR_CODES.INVALID_ARRAY]: "{{field}} must be a valid array",
     [ERROR_CODES.FILE_REQUIRED]: "File is required",
     [ERROR_CODES.FILE_TOO_LARGE]: "File size exceeds maximum limit",
@@ -282,6 +292,22 @@ const translations = {
     [ERROR_CODES.PHONE_ALREADY_EXISTS]: "Phone number is already registered",
     [ERROR_CODES.INVALID_REFRESH_TOKEN]: "Invalid refresh token",
     [ERROR_CODES.EMAIL_NOT_FOUND]: "Email address not found",
+    [ERROR_CODES.INVALID_CURRENT_PASSWORD]: "Current password is incorrect",
+    [ERROR_CODES.NEW_PASSWORD_MUST_DIFFER]:
+      "New password must be different from the current password",
+    [ERROR_CODES.PASSWORD_SETUP_CODE_REQUIRED]:
+      "An email verification code is required to create a password",
+    [ERROR_CODES.PASSWORD_TOO_LONG]:
+      "Password must not exceed 72 bytes when encoded as UTF-8",
+    [ERROR_CODES.INVALID_GOOGLE_TOKEN]: "Invalid Google sign-in credential",
+    [ERROR_CODES.GOOGLE_AUTH_NOT_CONFIGURED]:
+      "Google sign-in is not configured",
+    [ERROR_CODES.GOOGLE_ACCOUNT_LINK_REQUIRED]:
+      "Sign in with your existing password, then link your Google account",
+    [ERROR_CODES.GOOGLE_ACCOUNT_CONFLICT]:
+      "This Google account is already linked to another user",
+    [ERROR_CODES.GOOGLE_EMAIL_MISMATCH]:
+      "The Google account email must match your signed-in account",
 
     // Specialist-specific errors
     [ERROR_CODES.SPECIALIST_NOT_FOUND]: "Specialist not found",
@@ -380,6 +406,7 @@ const translations = {
     [ERROR_CODES.INVALID_CUSTOMER_IDS]:
       "One or more IDs are invalid or do not belong to customers",
     [ERROR_CODES.PASSWORD_RESET_SUCCESS]: "Password reset successfully",
+    [ERROR_CODES.PASSWORD_CHANGED_SUCCESS]: "Password changed successfully",
     [ERROR_CODES.OTP_SENT_SUCCESS]: "OTP sent successfully",
     [ERROR_CODES.LOGOUT_SUCCESS]: "Logged out successfully",
     [ERROR_CODES.OTP_VERIFIED_SUCCESS]: "OTP verified successfully",
@@ -507,7 +534,7 @@ const translations = {
     [ERROR_CODES.INVALID_MONGO_ID]: "صيغة المعرف غير صحيحة",
     [ERROR_CODES.INVALID_EMAIL]: "عنوان بريد إلكتروني غير صحيح",
     [ERROR_CODES.PASSWORD_TOO_WEAK]:
-      "يجب أن تكون كلمة المرور 8 أحرف على الأقل وتحتوي على أحرف كبيرة وصغيرة وأرقام",
+      "يجب أن تتكون كلمة المرور من 8 إلى 72 حرفًا",
     [ERROR_CODES.INVALID_ARRAY]: "{{field}} يجب أن يكون مصفوفة صحيحة",
     [ERROR_CODES.FILE_REQUIRED]: "الملف مطلوب",
     [ERROR_CODES.FILE_TOO_LARGE]: "حجم الملف يتجاوز الحد الأقصى",
@@ -562,6 +589,23 @@ const translations = {
     [ERROR_CODES.PHONE_ALREADY_EXISTS]: "رقم الهاتف مسجل بالفعل",
     [ERROR_CODES.INVALID_REFRESH_TOKEN]: "رمز التحديث غير صحيح",
     [ERROR_CODES.EMAIL_NOT_FOUND]: "عنوان البريد الإلكتروني غير موجود",
+    [ERROR_CODES.INVALID_CURRENT_PASSWORD]: "كلمة المرور الحالية غير صحيحة",
+    [ERROR_CODES.NEW_PASSWORD_MUST_DIFFER]:
+      "يجب أن تختلف كلمة المرور الجديدة عن كلمة المرور الحالية",
+    [ERROR_CODES.PASSWORD_SETUP_CODE_REQUIRED]:
+      "رمز التحقق عبر البريد الإلكتروني مطلوب لإنشاء كلمة مرور",
+    [ERROR_CODES.PASSWORD_TOO_LONG]:
+      "يجب ألا تتجاوز كلمة المرور 72 بايت عند ترميزها بصيغة UTF-8",
+    [ERROR_CODES.INVALID_GOOGLE_TOKEN]:
+      "بيانات تسجيل الدخول عبر Google غير صالحة",
+    [ERROR_CODES.GOOGLE_AUTH_NOT_CONFIGURED]:
+      "تسجيل الدخول عبر Google غير مُعد",
+    [ERROR_CODES.GOOGLE_ACCOUNT_LINK_REQUIRED]:
+      "سجّل الدخول بكلمة المرور الحالية ثم اربط حساب Google",
+    [ERROR_CODES.GOOGLE_ACCOUNT_CONFLICT]:
+      "حساب Google هذا مرتبط بمستخدم آخر بالفعل",
+    [ERROR_CODES.GOOGLE_EMAIL_MISMATCH]:
+      "يجب أن يطابق بريد حساب Google بريد الحساب المسجّل دخوله",
 
     // Specialist-specific errors
     [ERROR_CODES.SPECIALIST_NOT_FOUND]: "المتخصص غير موجود",
@@ -652,6 +696,7 @@ const translations = {
     [ERROR_CODES.INVALID_CUSTOMER_IDS]:
       "بعض المعرفات غير صالحة أو لا تنتمي لعملاء",
     [ERROR_CODES.PASSWORD_RESET_SUCCESS]: "تم إعادة تعيين كلمة المرور بنجاح",
+    [ERROR_CODES.PASSWORD_CHANGED_SUCCESS]: "تم تغيير كلمة المرور بنجاح",
     [ERROR_CODES.OTP_SENT_SUCCESS]: "تم إرسال كلمة المرور لمرة واحدة بنجاح",
     [ERROR_CODES.LOGOUT_SUCCESS]: "تم تسجيل الخروج بنجاح",
     [ERROR_CODES.OTP_VERIFIED_SUCCESS]:
@@ -785,6 +830,9 @@ export const fieldNames = {
     email: "Email",
     phone: "Phone number",
     password: "Password",
+    currentPassword: "Current password",
+    newPassword: "New password",
+    credential: "Google credential",
     title: "Title",
     description: "Description",
     content: "Content",
@@ -875,6 +923,9 @@ export const fieldNames = {
     email: "البريد الإلكتروني",
     phone: "رقم الهاتف",
     password: "كلمة المرور",
+    currentPassword: "كلمة المرور الحالية",
+    newPassword: "كلمة المرور الجديدة",
+    credential: "بيانات اعتماد Google",
     title: "العنوان",
     description: "الوصف",
     content: "المحتوى",
