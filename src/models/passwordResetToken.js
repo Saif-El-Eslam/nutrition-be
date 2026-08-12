@@ -1,30 +1,23 @@
 import mongoose from "mongoose";
 
-const otpSchema = new mongoose.Schema(
+const passwordResetTokenSchema = new mongoose.Schema(
   {
-    email: {
-      type: String,
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
       index: true,
     },
-    codeHash: {
+    tokenHash: {
       type: String,
       required: true,
+      unique: true,
       select: false,
-    },
-    purpose: {
-      type: String,
-      enum: ["verify_account", "reset_password"],
-      required: true,
     },
     expiresAt: {
       type: Date,
       required: true,
       index: { expires: 0 },
-    },
-    verified: {
-      type: Boolean,
-      default: false,
     },
     usedAt: {
       type: Date,
@@ -34,5 +27,9 @@ const otpSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const Otp = mongoose.model("Otp", otpSchema);
-export default Otp;
+const PasswordResetToken = mongoose.model(
+  "PasswordResetToken",
+  passwordResetTokenSchema,
+);
+
+export default PasswordResetToken;

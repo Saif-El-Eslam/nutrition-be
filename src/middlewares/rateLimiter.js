@@ -14,7 +14,7 @@ const keyGenerator = (req, res) => {
 const emailKeyGenerator = (req) => {
   const email = req.body?.email || req.query?.email;
   if (email) {
-    return `email:${email}`;
+    return `email:${String(email).trim().toLowerCase()}`;
   }
   return ipKeyGenerator(req.ip);
 };

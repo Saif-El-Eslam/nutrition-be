@@ -77,13 +77,22 @@ router.post(
   controller.refreshToken,
 );
 
-// TIER 2: Moderate - Forgot password request (5 per 15 mins)
+// TIER 1: Very Strict - Password-reset OTP sending (2 per hour per email)
 router.post(
   "/forgot-password",
-  moderateLimiter,
+  emailRateLimiter,
   validators.forgotPassword,
   handleValidationErrors,
   controller.forgotPassword,
+);
+
+// TIER 1: Very Strict - Verify reset OTP and mint a short-lived reset token
+router.post(
+  "/verify-reset-otp",
+  strictLoginLimiter,
+  validators.verifyResetOtp,
+  handleValidationErrors,
+  controller.verifyResetOtp,
 );
 
 // TIER 2: Moderate - Reset password (5 per 15 mins)

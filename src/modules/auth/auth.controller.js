@@ -132,6 +132,18 @@ const forgotPassword = async (req, res, next) => {
   }
 };
 
+const verifyResetOtp = async (req, res, next) => {
+  try {
+    const result = await authService.verifyResetOtp(req.body);
+    res.json({
+      message: translate("OTP_VERIFIED_SUCCESS", getLanguage(req)),
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const resetPassword = async (req, res, next) => {
   try {
     const result = await authService.resetPassword(req.body);
@@ -171,6 +183,7 @@ export default {
   sendOtp,
   verifyOtp,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
   changePassword,
 };

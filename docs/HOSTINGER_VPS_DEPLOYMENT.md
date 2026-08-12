@@ -169,7 +169,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Edit it as `deploy`. Required production names are `NODE_ENV`, `ENVIRONMENT`, `HOST`, `PORT`, `MONGO_URI`, `DB_NAME`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GOOGLE_CLIENT_IDS`, `FRONTEND_URL`, `BACKEND_URL`, `BUSINESS_EMAIL`, `GOOGLE_APP_PASSWORD`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and all six `PAYMOB_*` values in `.env.example`. Set `FRONTEND_URL=https://example.com`, `BACKEND_URL=https://api.example.com`, `HOST=127.0.0.1`, and `PORT=5000`. Production values stay on the VPS and `.env` is ignored.
+Edit it as `deploy`. Required production names are `NODE_ENV`, `ENVIRONMENT`, `HOST`, `PORT`, `MONGO_URI`, `DB_NAME`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `GOOGLE_CLIENT_IDS`, `FRONTEND_URL`, `BACKEND_URL`, `BUSINESS_EMAIL`, `RESEND_API_KEY`, `RESEND_FROM`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, and all six `PAYMOB_*` values in `.env.example`. Set `FRONTEND_URL=https://example.com`, `BACKEND_URL=https://api.example.com`, `HOST=127.0.0.1`, and `PORT=5000`. `RESEND_FROM` must use a domain verified in Resend. Production values stay on the VPS and `.env` is ignored.
 
 The frontend separately uses `/var/www/frontend/.env.production` containing `NEXT_PUBLIC_API_URL=https://api.example.com/api`. It is public and embedded at build time, so changes require rebuilding.
 

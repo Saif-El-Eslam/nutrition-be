@@ -112,7 +112,7 @@ then sends:
 
 On success, all older access and refresh sessions are invalidated and this
 browser receives rotated cookies. The code is single-use. Passwords allow all
-characters, must contain at least 6 characters, and must not exceed 72 UTF-8
+characters, must contain at least 8 characters, and must not exceed 72 UTF-8
 bytes. The byte limit prevents bcrypt from silently truncating the input.
 
 The logged-out `/api/auth/reset-password` endpoint remains the recovery path. It

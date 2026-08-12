@@ -1,5 +1,8 @@
 import User from "#models/user.js";
 import Otp from "#models/otp.js";
+import PasswordResetToken from "#models/passwordResetToken.js";
+import bcrypt from "bcryptjs";
+import { createHash, randomBytes } from "node:crypto";
 
 import generateOTP from "#utils/otp.js";
 import jwt from "#utils/jwt.js";
@@ -11,6 +14,24 @@ import {
   isGoogleAuthoritativeForEmail,
   verifyGoogleIdToken,
 } from "#utils/googleIdentity.js";
+
+const OTP_TTL_MS = 10 * 60 * 1000;
+const RESET_TOKEN_TTL_MS = 15 * 60 * 1000;
+
+const hashResetToken = (token) =>
+  createHash("sha256").update(token).digest("hex");
+
+const findValidOtp = (email, purpose) =>
+  Otp.findOne({
+    email,
+    purpose,
+    verified: false,
+    usedAt: null,
+    expiresAt: { $gt: new Date() },
+  }).select("+codeHash");
+
+const otpMatches = (otp, code) =>
+  Boolean(otp?.codeHash) && bcrypt.compare(code, otp.codeHash);
 
 const appError = (code, status) => {
   const error = new Error(translate(code, "en"));
@@ -66,42 +87,55 @@ const sendOtp = async ({ email }) => {
 
   const otp = generateOTP();
 
-  await Otp.create({
+  const otpRecord = await Otp.create({
     email,
-    code: otp,
+    codeHash: await bcrypt.hash(otp, 12),
     purpose: "verify_account",
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    expiresAt: new Date(Date.now() + OTP_TTL_MS),
   });
 
-  // send email
-  await sendEmail({
-    to: email,
-    subject: "Verify Your Email - OTP Code",
-    html: otpEmailTemplate(otp),
-  });
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Verify Your Email - OTP Code",
+      html: otpEmailTemplate(otp),
+    });
+  } catch (error) {
+    await Otp.deleteOne({ _id: otpRecord._id });
+    throw error;
+  }
 
   return email;
 };
 
 const verifyOtp = async ({ email, code }) => {
-  const otp = await Otp.findOne({
-    email,
-    code,
-    purpose: "verify_account",
-    expiresAt: { $gt: new Date() },
-  });
+  const otp = await findValidOtp(email, "verify_account");
 
-  if (!otp) {
+  if (!(await otpMatches(otp, code))) {
     const error = new Error(translate(ERROR_CODES.OTP_INVALID, "en"));
     error.code = ERROR_CODES.OTP_INVALID;
     error.status = 400;
     throw error;
   }
 
-  // Mark OTP as verified
-  otp.verified = true;
-  otp.expiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
-  await otp.save();
+  const verifiedOtp = await Otp.findOneAndUpdate(
+    {
+      _id: otp._id,
+      verified: false,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    },
+    {
+      $set: {
+        verified: true,
+        usedAt: new Date(),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    },
+  );
+  if (!verifiedOtp) {
+    throw appError(ERROR_CODES.OTP_INVALID, 400);
+  }
 
   return true;
 };
@@ -123,17 +157,18 @@ const signup = async ({ firstName, lastName, email, password, phone }) => {
     throw error;
   }
 
-  // const otp = await Otp.findOne({
-  //   email,
-  //   purpose: "verify_account",
-  //   verified: true,
-  // });
-  // if (!otp) {
-  //   const error = new Error(translate(ERROR_CODES.EMAIL_NOT_VERIFIED, "en"));
-  //   error.code = ERROR_CODES.EMAIL_NOT_VERIFIED;
-  //   error.status = 400;
-  //   throw error;
-  // }
+  const otp = await Otp.findOne({
+    email,
+    purpose: "verify_account",
+    verified: true,
+    expiresAt: { $gt: new Date() },
+  });
+  if (!otp) {
+    const error = new Error(translate(ERROR_CODES.EMAIL_NOT_VERIFIED, "en"));
+    error.code = ERROR_CODES.EMAIL_NOT_VERIFIED;
+    error.status = 400;
+    throw error;
+  }
 
   const user = await User.create({
     firstName,
@@ -322,67 +357,125 @@ const refreshToken = async (token) => {
 
 const forgotPassword = async ({ email }) => {
   const user = await User.findOne({ email });
+  const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+  // Always return the same response shape, even when the address is unknown.
+  // This prevents the endpoint from being used to enumerate accounts.
   if (!user) {
-    const error = new Error(translate(ERROR_CODES.EMAIL_NOT_FOUND, "en"));
-    error.code = ERROR_CODES.EMAIL_NOT_FOUND;
-    error.status = 404;
-    throw error;
+    return { expiresAt };
   }
 
   const otp = generateOTP();
 
-  // Only the newest password-reset code remains valid.
+  // Only credentials from the newest password-reset request remain valid.
   await Otp.deleteMany({ email, purpose: "reset_password" });
+  await PasswordResetToken.deleteMany({ user: user._id });
 
-  const _otp = await Otp.create({
+  const otpRecord = await Otp.create({
     email,
-    code: otp,
+    codeHash: await bcrypt.hash(otp, 12),
     purpose: "reset_password",
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    expiresAt,
   });
 
-  // send email
-  await sendEmail({
-    to: email,
-    subject: "Reset Your Password - OTP Code",
-    html: otpEmailTemplate(otp, "reset_password"),
-  });
-
-  return { email, expiresAt: _otp.expiresAt };
-};
-
-const resetPassword = async ({ email, code, password }) => {
-  const user = await User.findOne({ email }).select(
-    "+passwordHash +refreshToken +sessionVersion",
-  );
-  if (!user) {
-    const error = new Error(translate(ERROR_CODES.USER_NOT_FOUND, "en"));
-    error.code = ERROR_CODES.USER_NOT_FOUND;
-    error.status = 404;
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Reset Your Password - OTP Code",
+      html: otpEmailTemplate(otp, "reset_password"),
+    });
+  } catch (error) {
+    await Otp.deleteOne({ _id: otpRecord._id });
     throw error;
   }
 
-  // Atomically consume the code so concurrent requests cannot reuse it.
-  const otp = await Otp.findOneAndDelete({
-    email,
-    code,
-    purpose: "reset_password",
-    expiresAt: { $gt: new Date() },
-  });
-  if (!otp) {
+  return { expiresAt };
+};
+
+const verifyResetOtp = async ({ email, otp: submittedOtp }) => {
+  const otp = await findValidOtp(email, "reset_password");
+  if (!(await otpMatches(otp, submittedOtp))) {
     throw appError(ERROR_CODES.OTP_INVALID, 400);
   }
 
-  if (await user.comparePassword(password)) {
+  // Atomically consume the OTP so concurrent verification requests cannot
+  // mint more than one reset credential.
+  const consumedOtp = await Otp.findOneAndUpdate(
+    {
+      _id: otp._id,
+      verified: false,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    },
+    { $set: { verified: true, usedAt: new Date() } },
+  );
+  if (!consumedOtp) {
+    throw appError(ERROR_CODES.OTP_INVALID, 400);
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw appError(ERROR_CODES.OTP_INVALID, 400);
+  }
+
+  const resetToken = randomBytes(32).toString("base64url");
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
+
+  await PasswordResetToken.deleteMany({ user: user._id });
+  await PasswordResetToken.create({
+    user: user._id,
+    tokenHash: hashResetToken(resetToken),
+    expiresAt,
+  });
+
+  return { resetToken, expiresAt };
+};
+
+const resetPassword = async ({ resetToken, newPassword }) => {
+  const token = await PasswordResetToken.findOne({
+    tokenHash: hashResetToken(resetToken),
+    usedAt: null,
+    expiresAt: { $gt: new Date() },
+  });
+  if (!token) {
+    throw appError(ERROR_CODES.RESET_TOKEN_INVALID, 401);
+  }
+
+  const user = await User.findById(token.user).select(
+    "+passwordHash +refreshToken +sessionVersion",
+  );
+  if (!user) {
+    throw appError(ERROR_CODES.RESET_TOKEN_INVALID, 401);
+  }
+
+  if (await user.comparePassword(newPassword)) {
     throw appError(ERROR_CODES.NEW_PASSWORD_MUST_DIFFER, 400);
   }
 
-  user.passwordHash = password;
+  // Claim the token only after request-level checks pass. The conditional
+  // update makes the claim atomic, so concurrent reset attempts cannot both
+  // proceed.
+  const consumedToken = await PasswordResetToken.findOneAndUpdate(
+    {
+      _id: token._id,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    },
+    { $set: { usedAt: new Date() } },
+  );
+  if (!consumedToken) {
+    throw appError(ERROR_CODES.RESET_TOKEN_INVALID, 401);
+  }
+
+  user.passwordHash = newPassword;
   user.refreshToken = null;
   user.sessionVersion = (user.sessionVersion ?? 0) + 1;
   await user.save();
 
-  await Otp.deleteMany({ email, purpose: "reset_password" });
+  await Promise.all([
+    PasswordResetToken.deleteMany({ user: user._id }),
+    Otp.deleteMany({ email: user.email, purpose: "reset_password" }),
+  ]);
 
   return true;
 };
@@ -408,16 +501,19 @@ const changePassword = async (
     }
 
     // Google-only accounts prove mailbox control before adding a reusable
-    // password. The code is created by the existing forgot-password endpoint.
-    const otp = await Otp.findOneAndDelete({
-      email: user.email,
-      code,
-      purpose: "reset_password",
-      expiresAt: { $gt: new Date() },
-    });
-    if (!otp) {
+    // password. Preserve this authenticated flow while OTPs are stored hashed.
+    const otp = await findValidOtp(user.email, "reset_password");
+    if (!(await otpMatches(otp, code))) {
       throw appError(ERROR_CODES.OTP_INVALID, 400);
     }
+
+    const consumedOtp = await Otp.findOneAndDelete({
+      _id: otp._id,
+      verified: false,
+      usedAt: null,
+      expiresAt: { $gt: new Date() },
+    });
+    if (!consumedOtp) throw appError(ERROR_CODES.OTP_INVALID, 400);
   }
 
   if (await user.comparePassword(newPassword)) {
@@ -429,10 +525,13 @@ const changePassword = async (
   user.sessionVersion = (user.sessionVersion ?? 0) + 1;
   await user.save();
 
-  await Otp.deleteMany({
-    email: user.email,
-    purpose: "reset_password",
-  });
+  await Promise.all([
+    Otp.deleteMany({
+      email: user.email,
+      purpose: "reset_password",
+    }),
+    PasswordResetToken.deleteMany({ user: user._id }),
+  ]);
 
   // Keep this browser signed in with fresh cookies while all tokens issued for
   // the prior session version are rejected.
@@ -459,6 +558,7 @@ export default {
   verifyOtp,
   refreshToken,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
   changePassword,
   logout,

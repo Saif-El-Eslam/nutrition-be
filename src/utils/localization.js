@@ -64,6 +64,7 @@ export const ERROR_CODES = {
   EMAIL_NOT_VERIFIED: "EMAIL_NOT_VERIFIED",
   PHONE_ALREADY_EXISTS: "PHONE_ALREADY_EXISTS",
   INVALID_REFRESH_TOKEN: "INVALID_REFRESH_TOKEN",
+  RESET_TOKEN_INVALID: "RESET_TOKEN_INVALID",
   EMAIL_NOT_FOUND: "EMAIL_NOT_FOUND",
   INVALID_CURRENT_PASSWORD: "INVALID_CURRENT_PASSWORD",
   NEW_PASSWORD_MUST_DIFFER: "NEW_PASSWORD_MUST_DIFFER",
@@ -291,6 +292,8 @@ const translations = {
     [ERROR_CODES.EMAIL_NOT_VERIFIED]: "Please verify your email first",
     [ERROR_CODES.PHONE_ALREADY_EXISTS]: "Phone number is already registered",
     [ERROR_CODES.INVALID_REFRESH_TOKEN]: "Invalid refresh token",
+    [ERROR_CODES.RESET_TOKEN_INVALID]:
+      "The password reset token is invalid or has expired",
     [ERROR_CODES.EMAIL_NOT_FOUND]: "Email address not found",
     [ERROR_CODES.INVALID_CURRENT_PASSWORD]: "Current password is incorrect",
     [ERROR_CODES.NEW_PASSWORD_MUST_DIFFER]:
@@ -588,6 +591,8 @@ const translations = {
     [ERROR_CODES.EMAIL_NOT_VERIFIED]: "يرجى التحقق من بريدك الإلكتروني أولاً",
     [ERROR_CODES.PHONE_ALREADY_EXISTS]: "رقم الهاتف مسجل بالفعل",
     [ERROR_CODES.INVALID_REFRESH_TOKEN]: "رمز التحديث غير صحيح",
+    [ERROR_CODES.RESET_TOKEN_INVALID]:
+      "رمز إعادة تعيين كلمة المرور غير صالح أو منتهي الصلاحية",
     [ERROR_CODES.EMAIL_NOT_FOUND]: "عنوان البريد الإلكتروني غير موجود",
     [ERROR_CODES.INVALID_CURRENT_PASSWORD]: "كلمة المرور الحالية غير صحيحة",
     [ERROR_CODES.NEW_PASSWORD_MUST_DIFFER]:

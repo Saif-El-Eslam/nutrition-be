@@ -122,6 +122,26 @@ const forgotPassword = [
 ];
 
 const resetPassword = [
+  body("resetToken")
+    .notEmpty()
+    .withMessage(["REQUIRED_FIELD", { field: "resetToken" }])
+    .isString()
+    .withMessage(["INVALID_FORMAT", { field: "resetToken" }])
+    .matches(/^[A-Za-z0-9_-]{43}$/)
+    .withMessage(["INVALID_FORMAT", { field: "resetToken" }]),
+  body("newPassword")
+    .notEmpty()
+    .withMessage(["REQUIRED_FIELD", { field: "newPassword" }])
+    .isLength({ min: 8, max: 72 })
+    .withMessage([
+      "INVALID_LENGTH",
+      { field: "newPassword", min: 8, max: 72 },
+    ])
+    .custom((value) => Buffer.byteLength(value, "utf8") <= 72)
+    .withMessage(["PASSWORD_TOO_LONG"]),
+];
+
+const verifyResetOtp = [
   body("email")
     .trim()
     .toLowerCase()
@@ -129,19 +149,10 @@ const resetPassword = [
     .withMessage(["REQUIRED_FIELD", { field: "email" }])
     .isEmail()
     .withMessage(["INVALID_EMAIL"]),
-  body("code")
+  body("otp")
     .trim()
-    .notEmpty()
-    .withMessage(["REQUIRED_FIELD", { field: "code" }])
-    .isLength({ min: 6, max: 6 })
-    .withMessage(["INVALID_LENGTH", { min: 6, max: 6 }]),
-  body("password")
-    .notEmpty()
-    .withMessage(["REQUIRED_FIELD", { field: "password" }])
-    .isLength({ min: 8, max: 72 })
-    .withMessage(["INVALID_LENGTH", { field: "password", min: 8, max: 72 }])
-    .custom((value) => Buffer.byteLength(value, "utf8") <= 72)
-    .withMessage(["PASSWORD_TOO_LONG"]),
+    .matches(/^\d{6}$/)
+    .withMessage(["OTP_CODE_INVALID_LENGTH"]),
 ];
 
 const changePassword = [
@@ -183,6 +194,7 @@ export default {
   sendOtp,
   verifyOtp,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
   changePassword,
 };
