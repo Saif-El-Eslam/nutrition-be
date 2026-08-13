@@ -141,10 +141,7 @@ async function ensureAssessmentResultsPlan() {
         "Personalized health and nutrition insights",
         "رؤى صحية وغذائية مخصصة",
       ),
-      localized(
-        "Permanent access with one payment",
-        "وصول دائم بدفعة واحدة",
-      ),
+      localized("Permanent access with one payment", "وصول دائم بدفعة واحدة"),
     ],
     type: "one_time_offer",
     responseTimeInHours: 0,
@@ -438,8 +435,8 @@ export const prodSeed = async () => {
   const admin = await ensureUser({
     firstName: "Admin",
     lastName: "User",
-    email: "admin@diet-wellness.com",
-    phone: "01000000000",
+    email: "support@diet-n-wellness.com",
+    phone: "01097170211",
     role: "admin",
   });
 

@@ -196,12 +196,17 @@ recipeSchema.pre("save", async function () {
       validateTags(this.tags);
     }
 
+    // Mongoose initializes nested paths as an empty object even when they were
+    // not provided. Use the serialized value so optional nutrition info is not
+    // validated as five undefined fields.
+    const nutritionInfo = this.toObject().nutritionInfo;
+
     // Validate nutrition info
     if (
       (this.isModified("nutritionInfo") || this.isNew) &&
-      this.nutritionInfo
+      nutritionInfo
     ) {
-      validateNutritionInfo(this.nutritionInfo);
+      validateNutritionInfo(nutritionInfo);
     }
   } catch (error) {
     throw error;
