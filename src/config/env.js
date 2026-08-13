@@ -34,12 +34,28 @@ const env = {
 
   frontendUrl: process.env.FRONTEND_URL,
   backendUrl: process.env.BACKEND_URL,
+  allowedOrigins: process.env.ALLOWED_ORIGINS,
 
   defaultPassword: process.env.DEFAULT_PASSWORD,
 
   // allowedOrigins: [process.env.FRONTEND_URL || "http://localhost:3000"],
 };
 
-env.allowedOrigins = [env.frontendUrl, "http://localhost:3000"].filter(Boolean);
+env.allowedOrigins = [
+  ...new Set(
+    [
+      ...(env.allowedOrigins
+        ? env.allowedOrigins
+            .split(",")
+            .map((origin) => origin.trim())
+            .filter(Boolean)
+        : []),
+
+      env.frontendUrl,
+      "http://localhost:3000",
+      "http://localhost:3005",
+    ].filter(Boolean),
+  ),
+];
 
 export default env;
