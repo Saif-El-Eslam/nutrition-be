@@ -19,6 +19,7 @@ const verifyOtp = async (req, res, next) => {
     const result = await authService.verifyOtp(req.body);
     res.json({
       message: translate("OTP_VERIFIED_SUCCESS", getLanguage(req)),
+      data: result,
     });
   } catch (error) {
     next(error);

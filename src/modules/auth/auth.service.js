@@ -82,6 +82,14 @@ const getGoogleNames = ({ firstName, lastName, name, email }) => {
 };
 
 const sendOtp = async ({ email }) => {
+  const user = await User.findOne({ email }).select("emailVerified");
+
+  // Email verification now happens after signup. Keep this response neutral
+  // for unknown and already-verified addresses without sending another code.
+  if (!user || user.emailVerified) {
+    return email;
+  }
+
   // Delete any existing OTP for this user
   await Otp.deleteMany({ email, purpose: "verify_account" });
 
@@ -109,6 +117,11 @@ const sendOtp = async ({ email }) => {
 };
 
 const verifyOtp = async ({ email, code }) => {
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw appError(ERROR_CODES.OTP_INVALID, 400);
+  }
+
   const otp = await findValidOtp(email, "verify_account");
 
   if (!(await otpMatches(otp, code))) {
@@ -137,7 +150,12 @@ const verifyOtp = async ({ email, code }) => {
     throw appError(ERROR_CODES.OTP_INVALID, 400);
   }
 
-  return true;
+  user.emailVerified = true;
+  await user.save();
+
+  await Otp.deleteMany({ email, purpose: "verify_account" });
+
+  return { email, emailVerified: true };
 };
 
 const signup = async ({ firstName, lastName, email, password, phone }) => {
@@ -157,25 +175,13 @@ const signup = async ({ firstName, lastName, email, password, phone }) => {
     throw error;
   }
 
-  const otp = await Otp.findOne({
-    email,
-    purpose: "verify_account",
-    verified: true,
-    expiresAt: { $gt: new Date() },
-  });
-  if (!otp) {
-    const error = new Error(translate(ERROR_CODES.EMAIL_NOT_VERIFIED, "en"));
-    error.code = ERROR_CODES.EMAIL_NOT_VERIFIED;
-    error.status = 400;
-    throw error;
-  }
-
   const user = await User.create({
     firstName,
     lastName,
     email,
     phone,
     passwordHash: password,
+    emailVerified: false,
   });
 
   await Otp.deleteMany({ email, purpose: "verify_account" });
@@ -248,6 +254,7 @@ const googleSignIn = async ({ credential }) => {
         user = await User.create({
           ...names,
           email: googleProfile.email,
+          emailVerified: true,
           googleSubject: googleProfile.subject,
           avatarUrl: googleProfile.picture,
         });
@@ -265,6 +272,9 @@ const googleSignIn = async ({ credential }) => {
       }
     }
   }
+
+  // Google only reaches this point with an email_verified identity claim.
+  user.emailVerified = true;
 
   return {
     ...(await createSession(user)),
@@ -296,6 +306,7 @@ const linkGoogleAccount = async (userId, { credential }) => {
   }
 
   user.googleSubject = googleProfile.subject;
+  user.emailVerified = true;
   if (!user.avatarUrl && googleProfile.picture) {
     user.avatarUrl = googleProfile.picture;
   }

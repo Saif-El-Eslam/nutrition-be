@@ -11,7 +11,7 @@ import {
 
 const router = express.Router();
 
-// TIER 1: Very Strict - OTP sending (2 per hour per email)
+// Optional post-signup email verification (2 sends per hour per email)
 router.post(
   "/send-otp",
   emailRateLimiter,
@@ -20,7 +20,7 @@ router.post(
   controller.sendOtp,
 );
 
-// TIER 1: Very Strict - OTP verification (3 per 15 mins per user)
+// Marks the registered account's email as verified.
 router.post(
   "/verify-otp",
   strictLoginLimiter,
