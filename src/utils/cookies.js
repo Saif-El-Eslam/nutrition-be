@@ -1,6 +1,7 @@
 import env from "#config/env.js";
 
-const isProduction = env.environment === "production";
+const isLife =
+  env.environment === "production" || env.environment === "development";
 
 // Base cookie options shared across all auth cookies.
 //  httpOnly   — JS cannot read or modify the cookie (mitigates XSS token theft)
@@ -9,8 +10,8 @@ const isProduction = env.environment === "production";
 //                deployments); "lax" in development so non-HTTPS localhost works
 const BASE_OPTIONS = {
   httpOnly: true,
-  secure: isProduction,
-  sameSite: isProduction ? "none" : "lax",
+  secure: isLife,
+  sameSite: isLife ? "none" : "lax",
 };
 
 //  The refresh token cookie is scoped to /api/auth so it is NOT sent on every
