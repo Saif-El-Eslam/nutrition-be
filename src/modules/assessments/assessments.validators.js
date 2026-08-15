@@ -171,6 +171,10 @@ const createSectionValidators = [
     .optional()
     .isBoolean()
     .withMessage(["INVALID_FORMAT", { field: "isText" }]),
+  body("isOptional")
+    .optional()
+    .isBoolean()
+    .withMessage(["INVALID_FORMAT", { field: "isOptional" }]),
   ...resultRangesBody("resultRanges", body("isText").not().equals(true)),
 ];
 
@@ -193,6 +197,10 @@ const updateSection = [
     .optional()
     .isBoolean()
     .withMessage(["INVALID_FORMAT", { field: "isText" }]),
+  body("isOptional")
+    .optional()
+    .isBoolean()
+    .withMessage(["INVALID_FORMAT", { field: "isOptional" }]),
 ];
 
 const replaceSectionResultRanges = resultRangesBody("resultRanges");
@@ -294,9 +302,9 @@ const updateQuestion = [
 
 const sectionAnswers = [
   body("answers")
-    .notEmpty()
+    .exists()
     .withMessage(["REQUIRED_FIELD", { field: "answers" }])
-    .isArray({ min: 1 })
+    .isArray()
     .withMessage(["INVALID_ARRAY", { field: "answers" }]),
   body("answers.*.questionId")
     .isMongoId()
@@ -307,17 +315,15 @@ const sectionAnswers = [
     .withMessage(["INVALID_MONGO_ID_FORMAT", { field: "choiceId" }]),
   body("answers.*.answerText")
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage(["REQUIRED_FIELD", { field: "answerText" }]),
+    .isString()
+    .withMessage(["INVALID_FORMAT", { field: "answerText" }])
+    .trim(),
   body("answers")
     .custom((answers) => {
       if (!Array.isArray(answers)) return true;
       for (const answer of answers) {
         const hasChoiceId = Boolean(answer.choiceId);
-        const hasAnswerText =
-          typeof answer.answerText === "string" &&
-          answer.answerText.trim().length > 0;
+        const hasAnswerText = typeof answer.answerText === "string";
         if (!hasChoiceId && !hasAnswerText) {
           return false;
         }
@@ -342,7 +348,7 @@ const submitAllSections = [
     .isMongoId()
     .withMessage(["INVALID_MONGO_ID_FORMAT", { field: "sectionId" }]),
   body("sections.*.answers")
-    .isArray({ min: 1 })
+    .isArray()
     .withMessage(["INVALID_ARRAY", { field: "answers" }]),
   body("sections.*.answers.*.questionId")
     .isMongoId()
@@ -353,17 +359,15 @@ const submitAllSections = [
     .withMessage(["INVALID_MONGO_ID_FORMAT", { field: "choiceId" }]),
   body("sections.*.answers.*.answerText")
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage(["REQUIRED_FIELD", { field: "answerText" }]),
+    .isString()
+    .withMessage(["INVALID_FORMAT", { field: "answerText" }])
+    .trim(),
   body("sections.*.answers")
     .custom((answers) => {
       if (!Array.isArray(answers)) return true;
       for (const answer of answers) {
         const hasChoiceId = Boolean(answer.choiceId);
-        const hasAnswerText =
-          typeof answer.answerText === "string" &&
-          answer.answerText.trim().length > 0;
+        const hasAnswerText = typeof answer.answerText === "string";
         if (!hasChoiceId && !hasAnswerText) {
           return false;
         }

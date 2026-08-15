@@ -304,6 +304,11 @@ export function isSectionVisibleForUser(section, user) {
   return true;
 }
 
+/** A section is required only when it is visible to the user and not optional. */
+export function isSectionRequiredForUser(section, user) {
+  return !section.isOptional && isSectionVisibleForUser(section, user);
+}
+
 /**
  * Evaluate a single condition rule against a user object.
  *

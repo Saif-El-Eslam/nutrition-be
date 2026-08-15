@@ -18,6 +18,7 @@ import {
   stripScoresFromForm,
   localizeContent,
   isSectionVisibleForUser,
+  isSectionRequiredForUser,
   filterResultForAccess,
 } from "./assessments.helpers.js";
 
@@ -34,8 +35,8 @@ function createError(code, status = 400, params = {}) {
   return err;
 }
 
-/** Validate a section's answers: all visible questions answered, all choices valid. */
-function validateSectionAnswers(section, answers, language = "en") {
+/** Validate answers: required sections need all visible questions; choices must be valid. */
+export function validateSectionAnswers(section, answers, language = "en") {
   const answerMap = new Map(answers.map((a) => [a.questionId.toString(), a]));
 
   const visible = resolveVisibleQuestions(section.questions, answerMap);
@@ -43,6 +44,8 @@ function validateSectionAnswers(section, answers, language = "en") {
   for (const q of visible) {
     const answer = answerMap.get(q._id.toString());
     if (!answer) {
+      if (section.isOptional) continue;
+
       throw createError(ERROR_CODES.ASSESSMENT_MISSING_VISIBLE_ANSWER, 400, {
         question: q.text?.[language] ?? q.text?.en ?? q.text,
       });
@@ -50,6 +53,8 @@ function validateSectionAnswers(section, answers, language = "en") {
 
     if (section.isText) {
       if (!answer.answerText || !answer.answerText.trim()) {
+        if (section.isOptional) continue;
+
         throw createError(ERROR_CODES.ASSESSMENT_MISSING_VISIBLE_ANSWER, 400, {
           question: q.text?.[language] ?? q.text?.en ?? q.text,
         });
@@ -59,6 +64,8 @@ function validateSectionAnswers(section, answers, language = "en") {
 
     const choiceIdStr = answer.choiceId?.toString();
     if (!choiceIdStr) {
+      if (section.isOptional) continue;
+
       throw createError(ERROR_CODES.ASSESSMENT_MISSING_VISIBLE_ANSWER, 400, {
         question: q.text?.[language] ?? q.text?.en ?? q.text,
       });
@@ -243,6 +250,7 @@ export async function addSection(formId, data) {
     title: data.title,
     description: data.description || "",
     isText: data.isText || false,
+    isOptional: data.isOptional || false,
     order: data.order,
     questions: [],
   };
@@ -264,6 +272,7 @@ export async function updateSection(sectionId, data) {
   if (data.title !== undefined) update.title = data.title;
   if (data.description !== undefined) update.description = data.description;
   if (data.order !== undefined) update.order = data.order;
+  if (data.isOptional !== undefined) update.isOptional = data.isOptional;
 
   const section = await AssessmentSection.findByIdAndUpdate(sectionId, update, {
     new: true,
@@ -643,23 +652,23 @@ export async function finalizeSubmission(userId, language = null) {
     options: { sort: { order: 1 } },
   });
 
-  // Filter to only required (visible) sections for this user
+  // Only visible, non-optional sections must be submitted.
   const requiredSectionIds = fullForm.sections
-    .filter((section) => isSectionVisibleForUser(section, user))
+    .filter((section) => isSectionRequiredForUser(section, user))
     .map((section) => section._id.toString());
 
-  // Check all visible sections are answered
+  // Check all required sections are answered.
   const answeredSectionIds = new Set(
     submission.sectionResults.map((r) => r.section.toString()),
   );
 
-  const missingVisibleSections = requiredSectionIds.filter(
+  const missingRequiredSections = requiredSectionIds.filter(
     (id) => !answeredSectionIds.has(id),
   );
 
-  if (missingVisibleSections.length > 0) {
+  if (missingRequiredSections.length > 0) {
     throw createError(ERROR_CODES.ASSESSMENT_SECTIONS_INCOMPLETE, 400, {
-      sections: missingVisibleSections.length,
+      sections: missingRequiredSections.length,
     });
   }
 
@@ -701,12 +710,14 @@ export async function submitAll(userId, formId, sectionsData, language = null) {
     isSectionVisibleForUser(section.toJSON(), user),
   );
 
-  // Check all form sections are covered
-  const visibleSectionIds = visibleSections.map((s) => s._id.toString());
+  // Check all visible, non-optional form sections are covered.
+  const requiredSectionIds = visibleSections
+    .filter((section) => !section.isOptional)
+    .map((section) => section._id.toString());
   const submittedSectionIds = new Set(
     sectionsData.map((s) => s.sectionId.toString()),
   );
-  const missing = visibleSectionIds.filter(
+  const missing = requiredSectionIds.filter(
     (id) => !submittedSectionIds.has(id),
   );
   if (missing.length > 0) {
@@ -728,11 +739,12 @@ export async function submitAll(userId, formId, sectionsData, language = null) {
     sectionResults.push(result);
   }
 
-  // calculate not text sections max possible score
-  const notTextSectionsCount = visibleSections.reduce(
-    (sum, s) => sum + (s.isText ? 0 : 1),
-    0,
-  );
+  // Only submitted, scored sections contribute to the average. This prevents
+  // an omitted optional choice section from lowering the total score.
+  const notTextSectionsCount = sectionsData.reduce((count, item) => {
+    const section = sectionMap.get(item.sectionId.toString());
+    return count + (section?.isText ? 0 : 1);
+  }, 0);
   const totalScore =
     sectionResults.reduce((sum, r) => sum + r.sectionScore, 0) /
     (notTextSectionsCount || 1);
@@ -809,6 +821,7 @@ export async function getProgress(userId, language = null) {
       id: s._id,
       title: language ? (s.title?.[language] ?? s.title?.en) : s.title,
       order: s.order,
+      isOptional: s.isOptional,
       answered: answeredIds.has(s._id.toString()),
     })),
   };

@@ -417,6 +417,7 @@ async function createAssessmentForm(createdBy) {
       visibilityCondition: sectionData.visibilityCondition,
       resultRanges: sectionData.resultRanges,
       isText: sectionData.isText || false,
+      isOptional: sectionData.isOptional || false,
     });
     sections.push(section._id);
   }

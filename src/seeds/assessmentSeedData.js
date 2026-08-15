@@ -2170,6 +2170,7 @@ export const assessmentFormSeed = {
         "هذا القسم مخصص لأي ملاحظات إضافية أو معلومات مهمة تود أن تعرفها الأخصائية قبل بداية الخطة.",
       ),
       order: 14,
+      isOptional: true,
       questions: [
         {
           text: localized(

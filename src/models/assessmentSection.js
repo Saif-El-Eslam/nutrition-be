@@ -153,8 +153,9 @@ const assessmentSectionSchema = new mongoose.Schema(
     },
     order: { type: Number, required: true, min: 1 },
     isText: { type: Boolean, default: false },
+    isOptional: { type: Boolean, default: false },
     questions: { type: [questionSchema], default: [] },
-    // Condition to determine if this section is visible/required for a user
+    // Condition to determine if this section is visible for a user
     visibilityCondition: {
       type: sectionConditionSchema,
       default: () => ({ rules: [], logic: "AND" }),
