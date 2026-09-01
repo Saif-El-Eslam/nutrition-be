@@ -587,6 +587,7 @@ export async function submitSection(
       user: userId,
       form: form._id,
       status: SUBMISSION_STATUS.IN_PROGRESS,
+      resultVersion: 0,
       totalScore: sectionResult.sectionScore,
       sectionResults: [sectionResult],
     });
@@ -677,8 +678,12 @@ export async function finalizeSubmission(userId, language = null) {
     (sum, r) => sum + r.sectionScore,
     0,
   );
+  const isNewResult = submission.status !== SUBMISSION_STATUS.COMPLETED;
   submission.status = SUBMISSION_STATUS.COMPLETED;
-  submission.submittedAt = new Date();
+  if (isNewResult) {
+    submission.resultVersion += 1;
+    submission.submittedAt = new Date();
+  }
   await submission.save();
 
   // Link to user
@@ -749,13 +754,22 @@ export async function submitAll(userId, formId, sectionsData, language = null) {
     sectionResults.reduce((sum, r) => sum + r.sectionScore, 0) /
     (notTextSectionsCount || 1);
 
-  // Upsert submission — one per user per form
+  const existingSubmission = await AssessmentSubmission.findOne({
+    user: userId,
+    form: form._id,
+  }).select("resultVersion");
+
+  // Upsert submission — one per user per form. Each replacement gets a new
+  // version, invalidating any one-time purchase tied to the prior result.
   const submission = await AssessmentSubmission.findOneAndUpdate(
     { user: userId, form: form._id },
     {
       user: userId,
       form: form._id,
       status: SUBMISSION_STATUS.COMPLETED,
+      resultVersion: existingSubmission
+        ? existingSubmission.resultVersion + 1
+        : 1,
       totalScore,
       sectionResults,
       submittedAt: new Date(),

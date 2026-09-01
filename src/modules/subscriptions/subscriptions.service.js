@@ -146,14 +146,45 @@ export const createSubscriptionOrder = async (userId, subscriptionId) => {
       throw error;
     }
 
-    if (
+    const isResultsOffer =
       subscription.type === SUBSCRIPTION_PLAN_TYPES.ONE_TIME_OFFER &&
-      subscription.name === SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS
-    ) {
+      subscription.name === SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS;
+    let currentResult = null;
+
+    if (isResultsOffer) {
+      currentResult = await AssessmentSubmission.findOne({
+        user: userId,
+        status: SUBMISSION_STATUS.COMPLETED,
+      })
+        .select("_id resultVersion")
+        .session(session);
+
+      if (!currentResult) {
+        throw createError(ERROR_CODES.ASSESSMENT_NOT_FOUND, 404, "en");
+      }
+
       const existingPurchase = await Order.exists({
         user: userId,
-        subscription: subscriptionId,
         status: ORDER_STATUS.SUCCESS,
+        $or: [
+          {
+            assessmentSubmission: currentResult._id,
+            assessmentResultVersion: currentResult.resultVersion,
+          },
+          // Successful orders created before result versioning remain valid
+          // for the user's original result only.
+          ...(currentResult.resultVersion === 1
+            ? [
+                {
+                  assessmentResultVersion: { $exists: false },
+                  $or: [
+                    { entitlement: SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS },
+                    { subscription: subscriptionId },
+                  ],
+                },
+              ]
+            : []),
+        ],
       }).session(session);
 
       if (existingPurchase) {
@@ -179,11 +210,13 @@ export const createSubscriptionOrder = async (userId, subscriptionId) => {
     const order = new Order({
       user: userId,
       subscription: subscriptionId,
-      entitlement:
-        subscription.type === SUBSCRIPTION_PLAN_TYPES.ONE_TIME_OFFER &&
-        subscription.name === SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS
-          ? SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS
-          : undefined,
+      entitlement: isResultsOffer
+        ? SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS
+        : undefined,
+      assessmentSubmission: isResultsOffer ? currentResult._id : undefined,
+      assessmentResultVersion: isResultsOffer
+        ? currentResult.resultVersion
+        : undefined,
       amount: subscription.price,
       currency: subscription.currency || "EGP",
       status: "pending",
@@ -472,13 +505,22 @@ export const isUserSubscribed = async (userId) => {
   }
 };
 
-export const hasOneTimeResultsAccess = async (userId) => {
+export const hasOneTimeResultsAccess = async (userId, currentResult = null) => {
   if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
     return false;
   }
 
+  const result =
+    currentResult ||
+    (await AssessmentSubmission.findOne({
+      user: userId,
+      status: SUBMISSION_STATUS.COMPLETED,
+    }).select("_id resultVersion"));
+
+  if (!result) return false;
+
   // The subscription lookup keeps successful purchases made before the
-  // entitlement snapshot field was introduced valid as permanent access.
+  // entitlement snapshot field was introduced valid for the original result.
   const legacyPlanIds = await Subscription.find({
     name: SUBSCRIPTION_TYPES.ASSESSMENT_RESULTS,
     type: SUBSCRIPTION_PLAN_TYPES.ONE_TIME_OFFER,
@@ -494,7 +536,20 @@ export const hasOneTimeResultsAccess = async (userId) => {
   const purchase = await Order.exists({
     user: userId,
     status: ORDER_STATUS.SUCCESS,
-    $or: entitlementConditions,
+    $and: [
+      { $or: entitlementConditions },
+      {
+        $or: [
+          {
+            assessmentSubmission: result._id,
+            assessmentResultVersion: result.resultVersion,
+          },
+          ...(result.resultVersion === 1
+            ? [{ assessmentResultVersion: { $exists: false } }]
+            : []),
+        ],
+      },
+    ],
   });
 
   return Boolean(purchase);
@@ -507,16 +562,16 @@ export const getUserResultsAccess = async (userId) => {
 
   const [isSubscribed, result] = await Promise.all([
     isUserSubscribed(userId),
-    AssessmentSubmission.exists({
+    AssessmentSubmission.findOne({
       user: userId,
       status: SUBMISSION_STATUS.COMPLETED,
-    }),
+    }).select("_id resultVersion"),
   ]);
   const hasResult = Boolean(result);
 
   const hasOneTimeAccess = isSubscribed
     ? false
-    : await hasOneTimeResultsAccess(userId);
+    : await hasOneTimeResultsAccess(userId, result);
 
   return resolveResultsAccess({
     isSubscribed,

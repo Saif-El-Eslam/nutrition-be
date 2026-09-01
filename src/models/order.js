@@ -22,6 +22,16 @@ const orderSchema = new mongoose.Schema(
       type: String,
       enum: ["assessment_results"],
     },
+    // A one-time results purchase unlocks only the assessment result that was
+    // current when the order was created.
+    assessmentSubmission: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AssessmentSubmission",
+    },
+    assessmentResultVersion: {
+      type: Number,
+      min: 1,
+    },
     amount: {
       type: Number,
       required: true,
@@ -79,6 +89,13 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ user: 1, entitlement: 1, status: 1 });
+orderSchema.index({
+  user: 1,
+  entitlement: 1,
+  assessmentSubmission: 1,
+  assessmentResultVersion: 1,
+  status: 1,
+});
 
 orderSchema.methods.toJSON = function () {
   const order = this.toObject();

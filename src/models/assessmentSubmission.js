@@ -82,6 +82,9 @@ const assessmentSubmissionSchema = new mongoose.Schema(
       index: true,
     },
     totalScore: { type: Number, default: 0 },
+    // Incremented whenever a completed result is replaced. One-time purchases
+    // are bound to this version so they do not unlock future submissions.
+    resultVersion: { type: Number, min: 0, default: 1 },
     sectionResults: { type: [sectionResultSchema], default: [] },
     submittedAt: { type: Date, default: null },
   },
